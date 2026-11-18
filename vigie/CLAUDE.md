@@ -32,18 +32,18 @@ python3 outils/check.py docs /tmp/vigie-out --deps /tmp/vigie-deps  # environ 10
 
 Le banc doit finir avec 0 erreur et 0 débordement. Il écrit `report.json` et `contact.jpg` (planche de captures à regarder).
 
-Après chaque passage validé : construire `docs/`, commit, push sur `main` du dépôt `vigie`.
+Après chaque passage validé : construire `docs/`, commit, push sur `main` du dépôt `Vigie`.
 
 ## Adresses
 
-- Site (GitHub Pages, branche `main`, dossier `/docs`) : **https://florentin2908.github.io/vigie/** — prévu, à confirmer dès que le dépôt `vigie` existe et que Pages est activé.
+- Site (GitHub Pages, branche `main`, dossier `/docs`) : **https://florentin2908.github.io/Vigie/** — dépôt créé le 18 nov. 2026 ; le site répond dès que Pages est activé (Settings > Pages > Branch `main`, dossier `/docs`).
 - Artefact Claude : https://claude.ai/artifact/D65wicG7UAsTbm8npDVZhe — y publier `index.html` tel quel, avec `changelog.json`, `roadmap.md` et `banc-de-test.txt` (copie de `outils/check.py`). Relire la version en ligne avant (elle peut avoir changé).
 
 ## Connexion à GitHub
 
 Florentin se connecte lui-même. Ne jamais lui demander de mot de passe ni de jeton.
 - Sur son ordinateur : `gh auth login` (GitHub.com, HTTPS, connexion par le navigateur).
-- Dans une session Claude Code sur le web : l'appli GitHub de Claude doit avoir accès au dépôt `vigie` (https://github.com/apps/claude/installations/select_target).
+- Dans une session Claude Code sur le web : l'appli GitHub de Claude doit avoir accès au dépôt `Vigie` (https://github.com/apps/claude/installations/select_target).
 
 ## Règles qui ne se discutent pas (détail dans roadmap.md §2)
 
