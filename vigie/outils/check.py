@@ -2,10 +2,11 @@
 """Banc de test de Vigie.
 
 Usage :
-  python3 check.py <dossier_avec_index.html> <dossier_de_sortie> [--deps /tmp/vigie-deps] [--no-smoke]
+  python3 outils/check.py docs <dossier_de_sortie> [--deps /tmp/vigie-deps] [--no-smoke]
+  (docs/ = le site construit par outils/construire-site.py ; un dossier avec un index.html « contenu seul » marche aussi)
 
 Avant : npm install --prefix /tmp/vigie-deps three@0.160.0 leaflet@1.9.4
-        pip install playwright pillow (si absents)
+        pip install playwright pillow (si absents) ; ffmpeg pour la vidéo de test de la vue 360°
 
 Ce que fait le script :
 - sert le dossier en http://127.0.0.1 (pour que fetch('changelog.json') et les fichiers relatifs marchent) ;
@@ -28,10 +29,13 @@ Ce que fait le script :
 - (v0.13) ouvre le mode autoradio à 1024x600 (écran de voiture), 844x390 et 390x844 : chiffres remplis, rien qui dépasse ni rogné,
   bilan, stations, caméra (message clair sans caméra), « Quitter », puis l'ouverture directe par ?mode=autoradio ;
 - (v0.13) vérifie les fichiers de l'appli installable (manifeste, icônes, service hors ligne) ;
+- (v0.14) vue 360° réelle : fabrique 10 photos puis une vidéo ffmpeg testsrc de 30 s en .mp4 H.264, les donne au Garage,
+  vérifie l'extraction (36 images JPEG de 960 px dans IndexedDB, durée), l'affichage 360° de l'accueil, la rotation au glisser,
+  la rotation lente quand on ne touche pas, et la conservation après rechargement ;
 - écrit report.json et contact.jpg (planche de captures à regarder une fois).
 Code de sortie 1 s'il y a une erreur JavaScript.
 """
-import asyncio, json, os, sys, threading, functools, http.server, socketserver, time, argparse
+import asyncio, json, os, sys, threading, functools, http.server, socketserver, time, argparse, subprocess
 
 ap = argparse.ArgumentParser()
 ap.add_argument('site'); ap.add_argument('out')
@@ -112,6 +116,7 @@ INTRO_STATS = """() => { const m = window.__vm || {f: []}, f = m.f.filter(t => t
   return {images: Math.max(0, f.length - 1), pire_arret_ms: Math.round(gap), duree_ms: Math.round(m.ready - m.s1)}; }"""
 intro = {}
 rendu = {}
+vue360 = {}
 
 async def honesty(pg):
     try:
@@ -309,6 +314,69 @@ async def carnet(pg):
     except Exception as e:
         errors.append('contrôle : carnet d\'entretien bloqué : ' + str(e).splitlines()[0][:120])
 
+IDB_JS = """() => new Promise(r => {
+  const q = indexedDB.open('vigie');
+  q.onsuccess = () => { try { const g = q.result.transaction('spin').objectStore('spin').get('current');
+    g.onsuccess = () => { const v = g.result; q.result.close(); r(v ? {n: v.frames.length, w: v.w, h: v.h, type: v.frames[0].type, tailles: new Set(v.frames.map(b => b.size)).size, src: v.src} : null); };
+    g.onerror = () => r(null); } catch (e) { r(null); } };
+  q.onerror = () => r(null);
+})"""
+
+async def spin360(pg):
+    vid = os.path.join(OUT, 'tour-test.mp4')
+    try:
+        subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc=duration=30:size=1280x720:rate=30',
+                        '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', vid], check=True, timeout=180)
+    except Exception as e:
+        errors.append('contrôle : vue 360° non testée, ffmpeg absent ou en échec : ' + str(e)[:100]); return
+    from PIL import ImageDraw
+    pics = []
+    for i in range(10):
+        im = Image.new('RGB', (1600, 900), (30 + i * 15, 40, 90)); d = ImageDraw.Draw(im)
+        d.rectangle([300 + i * 60, 380, 1000 + i * 30, 640], fill=(210, 215, 225)); d.ellipse([400 + i * 50, 580, 560 + i * 50, 740], fill=(15, 15, 20))
+        f = os.path.join(OUT, f'tour-photo-{i:02d}.jpg'); im.save(f, quality=85); pics.append(f)
+    try:
+        await goto_tab(pg, 'car')
+        await pg.set_input_files('#spinPics', pics)
+        await pg.wait_for_function("window.VigieSpin && !window.VigieSpin.state().busy && window.VigieSpin.state().n === 10", timeout=60000)
+        t0 = time.time()
+        await pg.set_input_files('#spinVid', vid)
+        await pg.wait_for_function("window.VigieSpin && !window.VigieSpin.state().busy && (window.VigieSpin.state().src === 'video' || document.querySelector('#spinErr').textContent)", timeout=120000)
+        secs = round(time.time() - t0, 1)
+        st = await pg.evaluate("() => Object.assign(window.VigieSpin.state(), {err: document.querySelector('#spinErr').textContent})")
+        db = await pg.evaluate(IDB_JS)
+        vue360.update({'extraction_s': secs, 'extraction_ms_appli': st['ms'], 'images': st['n'], 'stockage': db})
+        if st['err']: errors.append('contrôle : vue 360° refusée : ' + st['err'])
+        if st['n'] != 36: errors.append(f"contrôle : {st['n']} image(s) tirée(s) de la vidéo au lieu de 36")
+        if not db or db['n'] != 36 or db['w'] != 960 or db['type'] != 'image/jpeg' or db['src'] != 'video':
+            errors.append(f'contrôle : la vue 360° n\'est pas gardée comme prévu dans IndexedDB : {db}')
+        elif db['tailles'] < 30: errors.append('contrôle : les images de la vue 360° se ressemblent trop (extraction figée ?)')
+        if st['ms'] and st['ms'] > 15000: errors.append(f"contrôle : extraction de la vue 360° en {st['ms'] / 1000:.1f} s (objectif : moins de 15 s)")
+        await pg.evaluate("document.querySelector('#spinCard').scrollIntoView({block: 'center'})"); await pg.wait_for_timeout(800)
+        await snap(pg, 'tel_garage_360')
+        await goto_tab(pg, 'home'); await pg.evaluate("document.querySelector('#main').scrollTo(0, 0)"); await pg.wait_for_timeout(1000)
+        vis = await pg.evaluate("() => ({spin: document.querySelector('#homeStage').classList.contains('is360'), btn: !document.querySelector('#stageSwitch button[data-view=spin]').hidden, w: document.querySelector('#stageSpin img').naturalWidth, src: (document.querySelector('#stageSpin img').getAttribute('src') || '').slice(0, 5), pause3d: window.VigieState.photoView})")
+        if not (vis['spin'] and vis['btn'] and vis['src'] == 'blob:' and vis['w'] == 960 and vis['pause3d']):
+            errors.append(f'contrôle : la vue 360° ne s\'affiche pas sur l\'accueil : {vis}')
+        await snap(pg, 'tel_accueil_360')
+        a0 = await pg.evaluate('window.VigieSpin.homeAngle()'); f0 = await pg.evaluate('window.VigieSpin.homeFrame()')
+        box = await pg.locator('#stageSpin').bounding_box()
+        cx, cy = box['x'] + box['width'] * .75, box['y'] + box['height'] / 2
+        await pg.mouse.move(cx, cy); await pg.mouse.down()
+        for k in range(1, 11):
+            await pg.mouse.move(cx - k * 18, cy); await pg.wait_for_timeout(30)
+        await pg.mouse.up(); await pg.wait_for_timeout(400)
+        a1 = await pg.evaluate('window.VigieSpin.homeAngle()'); f1 = await pg.evaluate('window.VigieSpin.homeFrame()')
+        vue360.update({'glisser_degres': round(a1 - a0), 'image_avant': f0, 'image_apres': f1})
+        if abs(a1 - a0) < 30 or f1 == f0: errors.append(f'contrôle : glisser ne fait pas tourner la vue 360° ({a0:.0f}° → {a1:.0f}°)')
+        await pg.wait_for_timeout(4500)
+        a2 = await pg.evaluate('window.VigieSpin.homeAngle()')
+        vue360['rotation_lente_degres'] = round(a2 - a1)
+        if abs(a2 - a1) < 5: errors.append('contrôle : la vue 360° ne tourne pas toute seule quand on ne la touche pas')
+        await snap(pg, 'tel_accueil_360_tourne')
+    except Exception as e:
+        errors.append('contrôle : vue 360° bloquée : ' + str(e).splitlines()[0][:140])
+
 RADIO_JS = """() => {
   const r = document.querySelector('#radio'); if (!r) return {open: false};
   const W = innerWidth, H = innerHeight, portrait = H > W, bad = [];
@@ -416,6 +484,13 @@ async def persistence(pg):
     c = await pg.evaluate("() => ({n: JSON.parse(localStorage.getItem('vigie.carnet') || '[]').length, rows: document.querySelectorAll('#carnet .cn-row').length, sc: document.querySelector('#demoSc').value})")
     if c['n'] < 1 or c['rows'] != c['n']: errors.append(f"contrôle : le carnet d'entretien est perdu ou mal affiché après rechargement ({c})")
     if c['sc'] != 'base': errors.append('contrôle : le scénario de démo est perdu après rechargement')
+    try:
+        await pg.wait_for_function("window.VigieSpin && window.VigieSpin.state().loaded", timeout=20000)
+        sp = await pg.evaluate("() => ({n: window.VigieSpin.state().n, view: localStorage.getItem('vigie.view'), spin: document.querySelector('#homeStage').classList.contains('is360')})")
+        if sp['n'] != 36: errors.append(f"contrôle : la vue 360° est perdue après rechargement ({sp['n']} images)")
+        if sp['view'] == 'spin' and not sp['spin']: errors.append('contrôle : l\'accueil ne revient pas en vue 360° après rechargement')
+    except Exception as e:
+        errors.append('contrôle : vue 360° pas rechargée : ' + str(e).splitlines()[0][:120])
 
 async def main():
     async with async_playwright() as p:
@@ -445,6 +520,7 @@ async def main():
         await body_and_photo(pg)
         await demo_scenarios(pg)
         await carnet(pg)
+        await spin360(pg)
         T = await tabs(pg)
         for tab in T:
             await goto_tab(pg, tab)
@@ -479,12 +555,13 @@ async def main():
     sheet = Image.new('RGB', (cw * cols, ch * rows), 'white')
     for i, im in enumerate(ims): sheet.paste(im, ((i % cols) * cw, (i // cols) * ch))
     sheet.save(os.path.join(OUT, 'contact.jpg'), quality=82)
-    rep = {'demarrage_s': start_s, 'lancement': intro, 'rendu_3d': rendu, 'rubriques': T, 'erreurs': errors, 'debordements': overflow, 'boutons_testes': len(clicked), 'clics': clicked, 'captures': shots}
+    rep = {'demarrage_s': start_s, 'lancement': intro, 'rendu_3d': rendu, 'vue_360': vue360, 'rubriques': T, 'erreurs': errors, 'debordements': overflow, 'boutons_testes': len(clicked), 'clics': clicked, 'captures': shots}
     json.dump(rep, open(os.path.join(OUT, 'report.json'), 'w'), ensure_ascii=False, indent=1)
     print(f'Rubriques : {T}')
     print(f'Démarrage terminé en {start_s} s · {len(clicked)} boutons cliqués')
     if intro: print(f"Animation de lancement : {intro.get('images')} images en {intro.get('duree_ms')} ms, plus long arrêt {intro.get('pire_arret_ms')} ms (rendu logiciel, plus lent qu'un vrai téléphone)")
     if rendu: print(f"Rendu 3D : {rendu.get('image_ms')} ms par image, niveau allégé {rendu.get('niveau_allege')} (0 = pleine qualité)")
+    if vue360: print(f"Vue 360° : {vue360.get('images')} images en {vue360.get('extraction_ms_appli')} ms (vidéo de 30 s), glisser {vue360.get('glisser_degres')}°, rotation lente {vue360.get('rotation_lente_degres')}°")
     print(f'ERREURS ({len(errors)}) :'); [print('  - ' + e) for e in errors]
     print(f'DÉBORDEMENTS ({len(overflow)}) :'); [print('  - ' + o) for o in overflow[:30]]
     print('Planche :', os.path.join(OUT, 'contact.jpg'))

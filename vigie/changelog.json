@@ -1,6 +1,15 @@
 {
   "versions": [
     {
+      "version": "0.14",
+      "date": "18 nov. 2026",
+      "items": [
+        "Vue 360° de ta vraie voiture : filme-en le tour (ou choisis 8 à 36 photos), puis fais-la tourner du doigt sur l'accueil",
+        "La vidéo et les images restent sur ton téléphone, rien n'est envoyé",
+        "Vigie a son propre site, installable sur ton téléphone et ton autoradio Android"
+      ]
+    },
+    {
       "version": "0.13",
       "date": "18 nov. 2026",
       "items": [

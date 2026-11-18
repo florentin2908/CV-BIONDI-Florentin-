@@ -1,4 +1,3 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Vigie, l'appli compagnon de ta voiture : autonomie, pneus, batterie, codes défaut, carnet de pleins, assistant Mécano et mode autoradio en 3D."><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="icon-192.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Vigie"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#15114f;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Vigie</title>
 <meta name="theme-color" content="#03050b">
 <script>document.documentElement.lang='fr';</script>
@@ -1162,6 +1161,25 @@ form{display:flex;flex-direction:column;gap:12px}
 .stage.photo .stage-photo{opacity:1}
 .stage.photo .gl-host,.stage.photo .svgfb,.stage.photo .stage-hint{visibility:hidden}
 .stage.hasphoto .stage-tag{display:none}
+/* ---------- Vue 360° réelle (v0.14) : 36 images de la vraie voiture, tournées du doigt ---------- */
+.spin-view{position:relative;overflow:hidden;touch-action:pan-y;cursor:grab;-webkit-user-select:none;user-select:none}
+.spin-view:active{cursor:grabbing}
+.spin-view img{display:block;width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none}
+.stage-spin{position:absolute;inset:0;border-radius:inherit;background:#0b0a2a;opacity:0;visibility:hidden;transition:opacity .5s,visibility 0s .5s}
+.stage.is360 .stage-spin{opacity:1;visibility:visible;transition:opacity .5s}
+.stage.is360 .gl-host,.stage.is360 .svgfb,.stage.is360 .stage-hint{visibility:hidden}
+.spin-prev{border-radius:18px;aspect-ratio:16/9;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12)}
+.spin-ang{position:absolute;right:12px;bottom:12px;display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;border-radius:999px;background:rgba(5,8,16,.6);border:1px solid var(--stroke);color:var(--ink);font:700 12px var(--font);font-variant-numeric:tabular-nums;pointer-events:none}
+.spin-ang .dial{position:relative;width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(var(--acc-rgb),.75);flex:none}
+.spin-ang .dial::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);transform:rotate(var(--a,0deg)) translateY(-6px)}
+.spin-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-size:11.5px;font-weight:700;color:var(--muted);padding:5px 11px;border-radius:999px;background:rgba(5,8,16,.5);border:1px solid var(--stroke);pointer-events:none;transition:opacity .6s;white-space:nowrap}
+.spin-view.touched .spin-hint{opacity:0}
+.tips{margin:0;padding-left:20px;font-size:14px;line-height:1.5;color:var(--ink)}
+.tips li{margin:2px 0}
+.spin-prog{display:flex;flex-direction:column;gap:6px}
+.spin-prog .bar>i{transition:width .25s}
+#spinBtns .btn{flex:1 1 140px}
+#spinFilm,#spinDel{flex-basis:100%!important}
 .stage-switch{position:absolute;left:12px;top:10px;display:flex;gap:2px;padding:3px;border-radius:999px;background:rgba(5,8,16,.6);border:1px solid var(--stroke);z-index:2}
 .stage-switch button{-webkit-appearance:none;appearance:none;border:0;background:none;color:var(--muted);font:inherit;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;cursor:pointer;transition:background .3s,color .3s}
 .stage-switch button.on{background:rgba(var(--acc-rgb),.22);color:var(--ink)}
@@ -1369,7 +1387,7 @@ body.radio-on .shell{visibility:hidden}
   <div class="orb" aria-hidden="true"><i></i><i></i><i></i></div>
   <div class="hud" aria-hidden="true">
     <span class="brk tl"></span><span class="brk tr"></span><span class="brk bl"></span><span class="brk br"></span>
-    <div class="hud-top"><span>VIGIE</span><span id="bootVer">v0.13</span></div>
+    <div class="hud-top"><span>VIGIE</span><span id="bootVer">v0.14</span></div>
     <div class="boot">
       <div class="l1"><i></i><span>Voiture</span><b data-intro="car">—</b></div>
       <div class="l2"><i></i><span>Liaison</span><b data-intro="link">—</b></div>
@@ -1435,8 +1453,9 @@ body.radio-on .shell{visibility:hidden}
         </div>
         <span class="brk tl"></span><span class="brk tr"></span><span class="brk bl"></span><span class="brk br"></span>
         <img class="stage-photo" id="stagePhoto" alt="Photo de ta voiture" hidden>
+        <div class="stage-spin spin-view" id="stageSpin" role="img" aria-label="Ta voiture en 360° : glisse pour la faire tourner"><img alt="" draggable="false"><span class="spin-hint">Glisse pour faire tourner</span><span class="spin-ang" aria-hidden="true"><span class="dial"></span><b>0°</b></span></div>
         <span class="stage-tag"><b></b>Vue 3D · 360°</span>
-        <div class="stage-switch" id="stageSwitch" role="group" aria-label="Affichage de la voiture" hidden><button type="button" data-view="3d" class="on" aria-pressed="true">3D</button><button type="button" data-view="photo" aria-pressed="false">Photo</button></div>
+        <div class="stage-switch" id="stageSwitch" role="group" aria-label="Affichage de la voiture" hidden><button type="button" data-view="3d" class="on" aria-pressed="true">3D</button><button type="button" data-view="photo" aria-pressed="false">Photo</button><button type="button" data-view="spin" aria-pressed="false">360°</button></div>
         <span class="stage-hint">Glisse pour faire tourner</span>
       </div>
       </div>
@@ -1748,6 +1767,30 @@ body.radio-on .shell{visibility:hidden}
       <p class="ferr" id="photoErr" role="alert"></p>
       <div class="btnrow"><button class="btn" id="photoAdd" type="button">Ajouter une photo</button><button class="btn ghost danger" id="photoDel" type="button" hidden>Supprimer</button></div>
     </div>
+    <div class="glass card rise" id="spinCard">
+      <div class="ch"><span class="h2">Vue 360° de ta voiture</span><span class="chip info"><span class="dot"></span><span>Reste sur cet appareil</span></span></div>
+      <div class="spin-prev spin-view" id="spinPrev" role="img" aria-label="Ta voiture en 360° : glisse pour la faire tourner" hidden><img alt="" draggable="false"><span class="spin-ang" aria-hidden="true"><span class="dial"></span><b>0°</b></span></div>
+      <div id="spinEmpty">
+        <p class="note">Filme un tour complet de ta vraie voiture : Vigie en tire 36 images, et tu la fais tourner du doigt sur l'accueil. La vidéo n'est jamais envoyée.</p>
+        <ul class="tips">
+          <li>Un tour complet, en 20 à 30 secondes, à pas lents.</li>
+          <li>Téléphone à l'horizontale, à hauteur des phares.</li>
+          <li>À environ 2 m de la voiture, de jour.</li>
+        </ul>
+      </div>
+      <p class="note" id="spinInfo" hidden>—</p>
+      <div class="spin-prog" id="spinProg" hidden><div class="bar"><i id="spinBar"></i></div><span class="label" id="spinProgT">Préparation…</span></div>
+      <input type="file" id="spinCam" accept="video/*" capture="environment" hidden>
+      <input type="file" id="spinVid" accept="video/*" hidden>
+      <input type="file" id="spinPics" accept="image/*" multiple hidden>
+      <p class="ferr" id="spinErr" role="alert"></p>
+      <div class="btnrow" id="spinBtns">
+        <button class="btn" id="spinFilm" type="button">Filmer le tour de ta voiture</button>
+        <button class="btn ghost" id="spinPick" type="button">Choisir une vidéo</button>
+        <button class="btn ghost" id="spinPhotos" type="button">Choisir 8 à 36 photos</button>
+        <button class="btn ghost danger" id="spinDel" type="button" hidden>Supprimer la vue 360°</button>
+      </div>
+    </div>
     </div>
     <form class="glass card rise" id="profileForm" novalidate>
       <div class="ch"><span class="h2">Infos de la voiture</span></div>
@@ -1796,10 +1839,10 @@ body.radio-on .shell{visibility:hidden}
     </div>
     <h2 class="sect rise"><span>Vigie</span></h2>
     <div class="glass card rise">
-      <div class="ch"><span class="h2">Nouveautés de Vigie</span><span class="chip info"><span class="dot"></span><span id="verChip">v0.13</span></span></div>
+      <div class="ch"><span class="h2">Nouveautés de Vigie</span><span class="chip info"><span class="dot"></span><span id="verChip">v0.14</span></span></div>
       <ul class="news" id="news"><li class="note">Chargement…</li></ul>
     </div>
-    <div class="foot" id="footVer">Vigie · version 0.13</div>
+    <div class="foot" id="footVer">Vigie · version 0.14</div>
   </section>
 
 </main>
@@ -3171,14 +3214,21 @@ const QS=(()=>{try{return new URLSearchParams(location.search);}catch(e){return 
 function startActions(){if(QS.get('add')==='1'&&!RADIO.on){go('drive');setTimeout(()=>fuelOpen(null),reduce?0:450);}}
 
 /* ---------- Photo de la voiture (gardée seulement sur ce téléphone, jamais envoyée) ---------- */
-let PHOTO=null,stageView='3d';
-try{const p=localStorage.getItem('vigie.photo');if(p&&p.startsWith('data:image/'))PHOTO=p;stageView=localStorage.getItem('vigie.view')==='photo'?'photo':'3d';}catch(e){}
-function setStageView(v){
-  stageView=PHOTO&&v==='photo'?'photo':'3d';
-  try{localStorage.setItem('vigie.view',stageView);}catch(e){}
-  const st=$('#homeStage');st.classList.toggle('photo',stageView==='photo');
+// Accueil : 3D, Photo ou 360° (la vue 360° vient d'IndexedDB et arrive un peu après le démarrage)
+let PHOTO=null,stageView='3d',viewPref='3d';
+try{const p=localStorage.getItem('vigie.photo');if(p&&p.startsWith('data:image/'))PHOTO=p;const v=localStorage.getItem('vigie.view');viewPref=v==='photo'||v==='spin'?v:'3d';}catch(e){}
+const SPIN={urls:[],imgs:[],n:0,date:null,src:'',busy:false,ms:null,loaded:false};
+function setStageView(v,persist){
+  stageView=v==='photo'&&PHOTO?'photo':v==='spin'&&SPIN.urls.length?'spin':'3d';
+  if(persist!==false){viewPref=stageView;try{localStorage.setItem('vigie.view',stageView);}catch(e){}}
+  const st=$('#homeStage');st.classList.toggle('photo',stageView==='photo');st.classList.toggle('is360',stageView==='spin');
   $$('#stageSwitch button').forEach(b=>{const on=b.dataset.view===stageView;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');});
-  window.VigieState.photoView=stageView==='photo';
+  window.VigieState.photoView=stageView!=='3d';
+}
+function switchUI(){
+  const ph=!!PHOTO,sp=SPIN.urls.length>0;
+  $('#stageSwitch').hidden=!(ph||sp);$('#homeStage').classList.toggle('hasphoto',ph||sp);
+  $('#stageSwitch button[data-view="photo"]').hidden=!ph;$('#stageSwitch button[data-view="spin"]').hidden=!sp;
 }
 function photoUI(){
   const has=!!PHOTO;
@@ -3187,8 +3237,7 @@ function photoUI(){
   img.hidden=!has;sp.hidden=!has;$('#photoEmpty').hidden=has;$('#photoBox').classList.toggle('has',has);
   $('#photoAdd').textContent=has?'Changer la photo':'Ajouter une photo';
   const del=$('#photoDel');del.hidden=!has;del.classList.remove('armed');del.textContent='Supprimer';
-  $('#stageSwitch').hidden=!has;$('#homeStage').classList.toggle('hasphoto',has);
-  setStageView(stageView);
+  switchUI();setStageView(viewPref,false);
 }
 function photoErr(m){$('#photoErr').textContent=m||'';}
 function photoLoad(file){
@@ -3202,7 +3251,7 @@ function photoLoad(file){
     c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(url);
     let data=c.toDataURL('image/jpeg',.82);if(data.length>2600000)data=c.toDataURL('image/jpeg',.6);
     try{localStorage.setItem('vigie.photo',data);}catch(e){photoErr('Ce téléphone n’a plus assez de place pour garder la photo. Essaie une image plus petite.');return;}
-    PHOTO=data;stageView='photo';photoUI();toast('Photo ajoutée');
+    PHOTO=data;photoUI();setStageView('photo');toast('Photo ajoutée');
   };
   im.onerror=()=>{URL.revokeObjectURL(url);photoErr('Cette image ne peut pas être lue. Essaie une photo en JPEG ou PNG.');};
   im.src=url;
@@ -3212,10 +3261,191 @@ $('#photoIn').addEventListener('change',e=>{photoLoad(e.target.files&&e.target.f
 $('#photoDel').addEventListener('click',()=>{
   const b=$('#photoDel');
   if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Confirmer';clearTimeout(b._t);b._t=setTimeout(()=>{b.classList.remove('armed');b.textContent='Supprimer';},4000);return;}
-  PHOTO=null;try{localStorage.removeItem('vigie.photo');}catch(e){}stageView='3d';photoUI();toast('Photo supprimée');
+  PHOTO=null;try{localStorage.removeItem('vigie.photo');}catch(e){}photoUI();if(viewPref==='photo')setStageView(SPIN.urls.length?'spin':'3d');toast('Photo supprimée');
 });
 $('#stageSwitch').addEventListener('click',e=>{const b=e.target.closest('button[data-view]');if(b)setStageView(b.dataset.view);});
 photoUI();
+
+/* =====================================================================
+   VUE 360° RÉELLE (v0.14) : la vraie voiture du client, jamais un modèle téléchargé.
+   Une vidéo du tour de la voiture (ou 8 à 36 photos) → 36 images JPEG de 960 px,
+   gardées seulement sur l'appareil (IndexedDB « vigie », magasin « spin »).
+   ===================================================================== */
+const SPIN_N=36,SPIN_W=960;
+let idbP=null;
+function idb(){
+  if(!idbP)idbP=new Promise((res,rej)=>{
+    try{const r=indexedDB.open('vigie',1);
+      r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('spin'))r.result.createObjectStore('spin');};
+      r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);r.onblocked=()=>rej(new Error('bloqué'));
+    }catch(e){rej(e);}
+  });
+  idbP.catch(()=>{idbP=null;});
+  return idbP;
+}
+function idbDo(mode,fn){return idb().then(db=>new Promise((res,rej)=>{const tx=db.transaction('spin',mode),req=fn(tx.objectStore('spin'));tx.oncomplete=()=>res(req&&req.result);tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error||new Error('abandon'));}));}
+const spinGet=()=>idbDo('readonly',s=>s.get('current'));
+const spinPut=rec=>idbDo('readwrite',s=>s.put(rec,'current'));
+const spinDelDb=()=>idbDo('readwrite',s=>s.delete('current'));
+
+// Lecteur 360° : glisser du doigt, inertie, rotation lente quand on ne touche pas, indicateur d'angle
+function makeSpin(root,visible){
+  const img=root.querySelector('img'),dial=root.querySelector('.dial'),deg=root.querySelector('.spin-ang b');
+  const S={urls:[],a:0,v:0,drag:false,px:0,pt:0,last:0,touch:-1e9,idx:-1,raf:0};
+  function draw(){
+    const n=S.urls.length;if(!n)return;
+    const i=((Math.round(S.a/360*n)%n)+n)%n;if(i!==S.idx){S.idx=i;img.src=S.urls[i];}
+    const d=Math.round(((S.a%360)+360)%360)%360;if(deg&&deg.textContent!==d+'°'){deg.textContent=d+'°';dial.style.setProperty('--a',d+'deg');}
+  }
+  function frame(now){
+    S.raf=requestAnimationFrame(frame);
+    const dt=Math.min(.05,Math.max(0,(now-S.last)/1000));S.last=now;
+    if(!S.urls.length||document.hidden||!visible())return;
+    if(!S.drag){
+      if(Math.abs(S.v)>4){S.a+=S.v*dt;S.v*=Math.pow(.05,dt);}
+      else{S.v=0;if(!reduce&&now-S.touch>2500)S.a+=dt*14;}
+    }
+    draw();
+  }
+  root.addEventListener('pointerdown',e=>{if(!S.urls.length)return;S.drag=true;S.px=e.clientX;S.pt=performance.now();S.v=0;root.classList.add('touched');try{root.setPointerCapture(e.pointerId);}catch(_){}});
+  root.addEventListener('pointermove',e=>{
+    if(!S.drag)return;
+    const dx=e.clientX-S.px,now=performance.now(),k=360/Math.max(260,root.clientWidth*1.1),dt=Math.max(.008,(now-S.pt)/1000);
+    S.px=e.clientX;S.pt=now;S.a-=dx*k;S.v=S.v*.5+(-dx*k/dt)*.5;draw();
+  });
+  const up=()=>{if(!S.drag)return;S.drag=false;S.touch=performance.now();if(performance.now()-S.pt>120)S.v=0;};
+  root.addEventListener('pointerup',up);root.addEventListener('pointercancel',up);
+  return {
+    set(urls){S.urls=urls;S.idx=-1;S.a=0;S.v=0;if(urls.length){draw();if(!S.raf){S.last=performance.now();S.raf=requestAnimationFrame(frame);}}else{img.removeAttribute('src');if(S.raf){cancelAnimationFrame(S.raf);S.raf=0;}}},
+    angle:()=>S.a,frame:()=>S.idx
+  };
+}
+const homeSpin=makeSpin($('#stageSpin'),()=>window.VigieState.tab==='home'&&!window.VigieState.radio&&stageView==='spin');
+const carSpin=makeSpin($('#spinPrev'),()=>window.VigieState.tab==='car'&&!window.VigieState.radio);
+
+function spinSet(rec){
+  SPIN.urls.forEach(u=>URL.revokeObjectURL(u));
+  SPIN.urls=rec?rec.frames.map(b=>URL.createObjectURL(b)):[];
+  SPIN.imgs=SPIN.urls.map(u=>{const im=new Image();im.decoding='async';im.src=u;return im;}); // préchargées : la rotation reste fluide
+  SPIN.n=SPIN.urls.length;SPIN.date=rec?rec.date:null;SPIN.src=rec?rec.src:'';
+  homeSpin.set(SPIN.urls);carSpin.set(SPIN.urls);
+}
+function spinUI(){
+  const has=SPIN.urls.length>0;
+  $('#spinPrev').hidden=!has;$('#spinEmpty').hidden=has;
+  const info=$('#spinInfo');info.hidden=!has;
+  if(has)info.textContent=`${SPIN.n} images${SPIN.src==='photos'?' tirées de tes photos':' tirées de ta vidéo'}${SPIN.date?`, le ${new Date(SPIN.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}`:''}. Glisse du doigt pour la faire tourner. Elle s'affiche sur l'accueil avec le bouton 360°.`;
+  $('#spinFilm').textContent=has?'Refilmer le tour':'Filmer le tour de ta voiture';
+  const del=$('#spinDel');del.hidden=!has;del.classList.remove('armed');del.textContent='Supprimer la vue 360°';
+  $$('#spinBtns button').forEach(b=>{b.disabled=SPIN.busy;});
+  switchUI();
+}
+function spinErr(m){$('#spinErr').textContent=m||'';}
+function spinProg(k,label){$('#spinBar').style.width=Math.round(clamp(k,0,1)*100)+'%';if(label)$('#spinProgT').textContent=label;}
+const toJpeg=c=>new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('jpeg')),'image/jpeg',.82));
+function seekTo(v,t){return new Promise(res=>{let done=false;const fin=()=>{if(done)return;done=true;clearTimeout(to);v.removeEventListener('seeked',fin);res();};const to=setTimeout(fin,4000);v.addEventListener('seeked',fin);v.currentTime=t;});}
+// Vidéo → 36 images régulières (élément video + canvas). D'abord une lecture accélérée qui attrape chaque image
+// au passage (la vidéo n'est décodée qu'une fois : rapide) ; les images manquées sont ensuite cherchées une par une
+// (currentTime puis « seeked »), ce qui sert aussi de repli pour les navigateurs sans requestVideoFrameCallback.
+async function framesFromVideo(file){
+  const url=URL.createObjectURL(file),v=document.createElement('video');
+  v.muted=true;v.defaultMuted=true;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('muted','');v.preload='auto';
+  v.style.cssText='position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:-1';
+  document.body.appendChild(v); // dans la page (minuscule) : certains navigateurs ne décodent pas une vidéo détachée
+  try{
+    await new Promise((res,rej)=>{const to=setTimeout(()=>rej(new Error('lecture')),20000);v.onloadeddata=()=>{clearTimeout(to);res();};v.onerror=()=>{clearTimeout(to);rej(new Error('lecture'));};v.src=url;});
+    const dur=v.duration;
+    if(!v.videoWidth||!(dur>0)||!isFinite(dur))throw new Error('lecture');
+    if(dur<3)throw new Error('courte');
+    const W=Math.min(SPIN_W,v.videoWidth),H=Math.round(v.videoHeight*W/v.videoWidth),c=document.createElement('canvas');c.width=W;c.height=H;
+    const g=c.getContext('2d'),T=Array.from({length:SPIN_N},(_,i)=>Math.min(dur-.05,(i+.5)*dur/SPIN_N)),out=new Array(SPIN_N),jobs=[],step=dur/SPIN_N;
+    let got=0;
+    const grab=i=>{g.drawImage(v,0,0,W,H);got++;jobs.push(toJpeg(c).then(b=>{out[i]=b;}));spinProg(got/SPIN_N,`Image ${got} sur ${SPIN_N}`);};
+    if('requestVideoFrameCallback' in v){
+      const rate=clamp(dur/5,1,8);
+      await new Promise(res=>{
+        let next=0,done=false;
+        const end=()=>{if(done)return;done=true;clearTimeout(to);try{v.pause();}catch(e){}res();};
+        const to=setTimeout(end,Math.max(12000,dur/rate*3000));
+        const cb=(now,meta)=>{
+          if(done)return;
+          const t=meta&&ok(meta.mediaTime)?meta.mediaTime:v.currentTime;
+          while(next<SPIN_N&&t>=T[next]-step*.3){if(t<=T[next]+step*.5)grab(next);next++;}
+          if(next>=SPIN_N){end();return;}
+          v.requestVideoFrameCallback(cb);
+        };
+        v.requestVideoFrameCallback(cb);
+        v.addEventListener('ended',end,{once:true});
+        v.playbackRate=rate;
+        const p=v.play();if(p&&p.catch)p.catch(end);
+      });
+    }else{try{await v.play();v.pause();}catch(e){}} // Safari sur iPhone : décode les images seulement après un début de lecture
+    await Promise.all(jobs);
+    for(let i=0;i<SPIN_N;i++){if(out[i])continue;await seekTo(v,T[i]);grab(i);}
+    await Promise.all(jobs);
+    if(out.filter(Boolean).length<SPIN_N)throw new Error('lecture');
+    // Une vidéo que le navigateur ouvre sans savoir la décoder donne des images toutes noires
+    const px=g.getImageData(0,0,W,H).data;let sum=0;for(let i=0;i<px.length;i+=4*97)sum+=px[i]+px[i+1]+px[i+2];
+    if(sum===0)throw new Error('lecture');
+    return {frames:out,w:W,h:H};
+  }finally{try{v.pause();v.removeAttribute('src');v.load();v.remove();}catch(e){}URL.revokeObjectURL(url);}
+}
+function loadPic(file){
+  if(window.createImageBitmap)return createImageBitmap(file).catch(()=>loadPicImg(file));
+  return loadPicImg(file);
+}
+function loadPicImg(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{URL.revokeObjectURL(u);res(im);};im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('photo'));};im.src=u;});}
+// 8 à 36 photos prises en tournant → même affichage (dans l'ordre des noms de fichiers, comme l'appareil photo les numérote)
+async function framesFromPhotos(files){
+  let list=[...files].filter(f=>/^image\//.test(f.type||'')).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true})||a.lastModified-b.lastModified);
+  if(list.length<8)throw new Error('peu');
+  if(list.length>SPIN_N){const k=list.length/SPIN_N;list=Array.from({length:SPIN_N},(_,i)=>list[Math.floor(i*k)]);}
+  let W=0,H=0,c=null,g=null;const out=[];
+  for(let i=0;i<list.length;i++){
+    const im=await loadPic(list[i]),iw=im.width||im.naturalWidth,ih=im.height||im.naturalHeight;
+    if(!W){W=Math.min(SPIN_W,iw);H=Math.round(ih*W/iw);c=document.createElement('canvas');c.width=W;c.height=H;g=c.getContext('2d');}
+    const k=Math.max(W/iw,H/ih),dw=iw*k,dh=ih*k;g.fillStyle='#000';g.fillRect(0,0,W,H);g.drawImage(im,(W-dw)/2,(H-dh)/2,dw,dh);
+    if(im.close)im.close();
+    out.push(await toJpeg(c));spinProg((i+1)/list.length,`Photo ${i+1} sur ${list.length}`);
+  }
+  return {frames:out,w:W,h:H};
+}
+const SPIN_MSG={
+  lecture:'Ce navigateur ne lit pas cette vidéo (souvent une vidéo .mov en HEVC, le format « haute efficacité » de l’iPhone). Refilme avec le bouton « Filmer le tour de ta voiture », ou choisis plutôt 8 à 36 photos prises en tournant autour de la voiture.',
+  courte:'La vidéo est trop courte. Filme un tour complet de la voiture, en 20 à 30 secondes.',
+  peu:'Choisis au moins 8 photos, prises en tournant autour de la voiture (36 au maximum).',
+  photo:'Une des photos ne peut pas être lue. Choisis des photos en JPEG ou PNG.'
+};
+async function spinMake(kind,files){
+  if(SPIN.busy||!files||!files.length)return;
+  SPIN.busy=true;window.VigieState.busy=true;spinErr('');spinUI();$('#spinProg').hidden=false;spinProg(0,kind==='video'?'Lecture de la vidéo…':'Lecture des photos…');
+  const t0=performance.now();
+  try{
+    const r=kind==='video'?await framesFromVideo(files[0]):await framesFromPhotos(files);
+    const rec={v:1,frames:r.frames,w:r.w,h:r.h,date:new Date().toISOString(),src:kind==='video'?'video':'photos'};
+    let kept=true;try{await spinPut(rec);}catch(e){kept=false;}
+    SPIN.ms=Math.round(performance.now()-t0);
+    spinSet(rec);setStageView('spin');
+    if(kept)toast(`Vue 360° prête · ${rec.frames.length} images`);
+    else spinErr('Cet appareil n’a pas pu garder la vue 360° (stockage plein ou bloqué) : elle disparaîtra à la fermeture de Vigie.');
+  }catch(e){
+    spinErr(SPIN_MSG[e&&e.message]||'La vue 360° n’a pas pu être préparée. Réessaie, ou choisis 8 à 36 photos prises en tournant autour de la voiture.');
+  }finally{SPIN.busy=false;window.VigieState.busy=false;$('#spinProg').hidden=true;spinUI();}
+}
+$('#spinFilm').addEventListener('click',()=>{spinErr('');$('#spinCam').click();});
+$('#spinPick').addEventListener('click',()=>{spinErr('');$('#spinVid').click();});
+$('#spinPhotos').addEventListener('click',()=>{spinErr('');$('#spinPics').click();});
+['spinCam','spinVid'].forEach(id=>$('#'+id).addEventListener('change',e=>{const f=e.target.files;if(f&&f[0])spinMake('video',[f[0]]);e.target.value='';}));
+$('#spinPics').addEventListener('change',e=>{const f=e.target.files;if(f&&f.length)spinMake('photos',[...f]);e.target.value='';});
+$('#spinDel').addEventListener('click',async()=>{
+  const b=$('#spinDel');
+  if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Confirmer';clearTimeout(b._t);b._t=setTimeout(()=>{b.classList.remove('armed');b.textContent='Supprimer la vue 360°';},4000);return;}
+  try{await spinDelDb();}catch(e){}
+  spinSet(null);if(viewPref==='spin')setStageView(PHOTO?'photo':'3d');spinUI();toast('Vue 360° supprimée');
+});
+window.VigieSpin={state:()=>({n:SPIN.n,busy:SPIN.busy,ms:SPIN.ms,view:stageView,loaded:SPIN.loaded,src:SPIN.src}),homeAngle:()=>homeSpin.angle(),homeFrame:()=>homeSpin.frame()};
+spinUI();
+spinGet().then(rec=>{if(rec&&Array.isArray(rec.frames)&&rec.frames.length>=8)spinSet(rec);}).catch(()=>{}).then(()=>{SPIN.loaded=true;spinUI();setStageView(viewPref,false);});
 
 /* ---------- Raccourcis de l'accueil ---------- */
 $('#qaFuel').addEventListener('click',()=>{go('drive');setTimeout(()=>fuelOpen(null),reduce?0:450);});
@@ -3717,7 +3947,8 @@ function runApp(){
   const perf={prev:0,n:0,sum:0,level:0,done:false};
   function perfStep(now){
     if(perf.done)return;
-    if(perf.prev&&now-perf.prev<1000){perf.n++;perf.sum+=now-perf.prev;}
+    // Seulement entre deux images dessinées coup sur coup (pas après un changement d'onglet ou une pause)
+    if(perf.prev&&perf.prev===perf.prevTick&&now-perf.prev<5000){perf.n++;perf.sum+=now-perf.prev;}
     perf.prev=now;
     if(perf.n<20)return;
     const avg=perf.sum/perf.n;perf.n=0;perf.sum=0;window.VigieState.frameMs=Math.round(avg);
@@ -3778,9 +4009,9 @@ function runApp(){
   let last=performance.now();
   function frame(now){
     requestAnimationFrame(frame);
-    const dt=Math.min(.1,(now-last)/1000);last=now;
+    const dt=Math.min(.1,(now-last)/1000);last=now;perf.prevTick=perf.tick;perf.tick=now;
     const s=S(),vw=s.radio?'radio':s.tab;attach(vw);
-    if(!host||document.hidden||!compiled)return;
+    if(!host||document.hidden||!compiled||s.busy)return; // en pause pendant la préparation de la vue 360°
     if(!window.__splashDone&&st.rendered)return;
     if(window.__splashDone&&intro.t0===null)intro.t0=now;
     st.rendered=true;
@@ -3834,5 +4065,3 @@ if(startIntro)startIntro();
   if(window.requestIdleCallback)requestIdleCallback(()=>runApp(),{timeout:400});else setTimeout(runApp,60);
 })();
 </script>
-
-</body></html>
